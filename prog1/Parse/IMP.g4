@@ -3,29 +3,39 @@ grammar IMP;
 @header {
     package Parse;
     import Tree.*;
+    import java.util.*;
 }
 
 program
     : pre=assertion statementlist post=assertion
 		{
-		    // FIXME: Print verification condition instead
-		    $pre.tree.print();   System.out.println();
-		    $post.tree.print();  System.out.println();
+		    Exp wlp = $statementlist.tree.wlp($post.tree);
+		    Exp vc = new OpExp($pre.tree, OpExp.Op.IMP, wlp);
+		    vc.print();
+		    System.out.println();
 		}
     ;
 
-statementlist
+statementlist returns [Stmt tree]
     : statement
-    | statement ';' statementlist
+		{ $tree = $statement.tree; }
+    | s1=statement ';' s2=statementlist
+		{ $tree = new Seq($s1.tree, $s2.tree); }
     ;
 
-statement
+statement returns [Stmt tree]
     : 'skip'
+		{ $tree = new Skip(); }
     | id ':=' arithexp
+		{ $tree = new Assign($id.name, $arithexp.tree); }
     | 'begin' statementlist 'end'
-    | 'if' boolterm 'then' statement 'else' statement
+		{ $tree = $statementlist.tree; }
+    | 'if' boolterm 'then' s1=statement 'else' s2=statement
+		{ $tree = new IfThenElse($boolterm.tree, $s1.tree, $s2.tree); }
     | assertion 'while' boolterm 'do' statement
+		{ $tree = new While($assertion.tree, $boolterm.tree, $statement.tree); }
     | 'assert' assertion
+		{ $tree = new AssertStmt($assertion.tree); }
     ;
 
 assertion returns [Exp tree]
@@ -36,42 +46,56 @@ assertion returns [Exp tree]
 boolexp returns [Exp tree]
     : t=boolterm
 		{ $tree = $t.tree; }
-    | boolterm '=>' boolterm
-    | boolterm '<=>' boolterm
+    | t1=boolterm '=>' t2=boolterm
+		{ $tree = new OpExp($t1.tree, OpExp.Op.IMP, $t2.tree); }
+    | t1=boolterm '<=>' t2=boolterm
+		{ $tree = new OpExp($t1.tree, OpExp.Op.EQV, $t2.tree); }
     ;
 
 boolterm returns [Exp tree]
     : t=boolterm2
 		{ $tree = $t.tree; }
-    | boolterm 'or' boolterm2
+    | t1=boolterm 'or' t2=boolterm2
+		{ $tree = new OpExp($t1.tree, OpExp.Op.OR, $t2.tree); }
     ;
 
 boolterm2 returns [Exp tree]
     : t=boolfactor
 		{ $tree = $t.tree; }
-    | boolterm2 'and' boolfactor
+    | t1=boolterm2 'and' t2=boolfactor
+		{ $tree = new OpExp($t1.tree, OpExp.Op.AND, $t2.tree); }
     ;
 
 boolfactor returns [Exp tree]
     : 'true'
+		{ $tree = new BoolLit(true); }
     | 'false'
+		{ $tree = new BoolLit(false); }
     | compexp
 		{ $tree = $compexp.tree; }
     | 'forall' id '.' boolexp
+		{ $tree = new ForAll($id.name.getName(), $boolexp.tree); }
     | 'exists' id '.' boolexp
+		{ $tree = new Exists($id.name.getName(), $boolexp.tree); }
     | 'not' boolfactor
+		{ $tree = new OpExp(OpExp.Op.NOT, $boolfactor.tree); }
     | '(' t=boolexp ')'
 		{ $tree = $t.tree; }
     ;
 
 compexp returns [Exp tree]
-    : arithexp '<' arithexp
-    | arithexp '<=' arithexp
+    : t1=arithexp '<' t2=arithexp
+		{ $tree = new OpExp($t1.tree, OpExp.Op.LT, $t2.tree); }
+    | t1=arithexp '<=' t2=arithexp
+		{ $tree = new OpExp($t1.tree, OpExp.Op.LE, $t2.tree); }
     | t1=arithexp '=' t2=arithexp
 		{ $tree = new OpExp($t1.tree, OpExp.Op.EQ, $t2.tree); }
-    | arithexp '!=' arithexp
-    | arithexp '>=' arithexp
-    | arithexp '>' arithexp
+    | t1=arithexp '!=' t2=arithexp
+		{ $tree = new OpExp($t1.tree, OpExp.Op.NE, $t2.tree); }
+    | t1=arithexp '>=' t2=arithexp
+		{ $tree = new OpExp($t1.tree, OpExp.Op.GE, $t2.tree); }
+    | t1=arithexp '>' t2=arithexp
+		{ $tree = new OpExp($t1.tree, OpExp.Op.GT, $t2.tree); }
     ;
 
 arithexp returns [Exp tree]
@@ -97,15 +121,19 @@ arithfactor returns [Exp tree]
 		{ $tree = $id.name; }
     | integer
 		{ $tree = $integer.value; }
-    | '-' arithfactor
-    | '(' t=arithexp ')'
-		{ $tree = $t.tree; }
+    | '-' af=arithfactor
+		{ $tree = new OpExp(OpExp.Op.UMINUS, $af.tree); }
+    | '(' ae=arithexp ')'
+		{ $tree = $ae.tree; }
     | id '(' arithexplist ')'
+		{ $tree = new FuncApp($id.name.getName(), $arithexplist.trees); }
     ;
 
-arithexplist
-    : arithexp
-    | arithexp ',' arithexplist
+arithexplist returns [java.util.List<Exp> trees]
+    : t=arithexp
+		{ $trees = new java.util.ArrayList<Exp>(); $trees.add($t.tree); }
+    | t=arithexp ',' rest=arithexplist
+		{ $trees = $rest.trees; $trees.add(0, $t.tree); }
     ;
 
 id returns [Ident name]

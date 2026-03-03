@@ -8,4 +8,8 @@ public class IntLit extends Exp {
     public void print() {
 	System.out.print(value);
     }
+
+    public Exp substitute(String var, Exp replacement) {
+	return this;
+    }
 }

@@ -5,7 +5,14 @@ public class Ident extends Exp {
 
     public Ident(String n) { name = n; }
 
+    public String getName() { return name; }
+
     public void print() {
 	System.out.print(name);
+    }
+
+    public Exp substitute(String var, Exp replacement) {
+	if (name.equals(var)) return replacement;
+	return this;
     }
 }

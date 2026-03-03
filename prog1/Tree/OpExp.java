@@ -6,7 +6,7 @@ public class OpExp extends Exp {
 	LT, LE, EQ, NE, GT, GE,
 	PLUS, MINUS, TIMES, DIV, UMINUS
     }
-    enum LR { LEFT, RIGHT }
+    public enum LR { LEFT, RIGHT }
 
     static private String[] opnames = {
 	" => ", " <=> ", " or ", " and ", "not ",
@@ -37,12 +37,22 @@ public class OpExp extends Exp {
 
     void print(Op parent, LR child) {
 	if (precedence[parent.ordinal()] > precedence[op.ordinal()]
-	    || (child == LR.RIGHT && parent == Op.MINUS && op == Op.MINUS)) {
+	    || (child == LR.RIGHT
+		&& (parent == Op.MINUS || parent == Op.DIV)
+		&& precedence[parent.ordinal()] == precedence[op.ordinal()])) {
 	    System.out.print('(');
 	    print();
 	    System.out.print(')');
 	}
 	else
 	    print();
+    }
+
+    public Exp substitute(String var, Exp replacement) {
+	Exp newRight = right.substitute(var, replacement);
+	if (left == null)
+	    return new OpExp(op, newRight);
+	Exp newLeft = left.substitute(var, replacement);
+	return new OpExp(newLeft, op, newRight);
     }
 }
