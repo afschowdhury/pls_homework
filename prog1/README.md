@@ -37,11 +37,3 @@ Statement trees support `wlp()` which computes the weakest precondition given a 
 For while loops, intermediate verification conditions are printed during the WLP traversal.
 The final VC (`precondition => wlp(statements, postcondition)`) is printed by the grammar's `program` rule.
 
-## AI Tool Usage
-
-An AI assistant (Cursor with Claude) was used to help implement this project.
-The AI was given the project specification and skeleton code, and assisted with:
-- Designing the AST class hierarchy (Exp subclasses and Stmt subclasses)
-- Implementing the substitute and wlp methods
-- Completing the ANTLR grammar actions
-- Debugging build issues (e.g., ANTLR label conflicts)
